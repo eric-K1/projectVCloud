@@ -288,13 +288,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: -0, y: -0.93399674, z: -0, w: -0.35728142}
+  m_LocalPosition: {x: 4.94, y: 8.16, z: -6.09}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -221.86699, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -308,9 +308,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _shader: {fileID: 4800000, guid: 6ba88fdb102c23310ac5f209f365335f, type: 3}
-  maximumRenderDistance: 100
-  cloudLayerBottomHeight: -0.46
-  cloudLayerTopHeight: 2.4
+  cloudRenderDistance: 100
+  cloudLayerBottomHeight: 62.1
+  cloudLayerTopHeight: 88.4
+  globalCloudCoverage: 0.35
+  globalCloudDensity: 387
+  weatherMapScale: 892
+  WeatherMap: {fileID: 2800000, guid: eec2f3beec5a13842b863327c958a001, type: 3}
 --- !u!1 &1094642765
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,7 +22,15 @@
             uniform sampler2D _CameraDepthTexture;
             uniform float4x4 _CamFrustum, _CamToWorldMatrix;
             uniform float _maxDistance;
+
             uniform float2 _CloudLayerHeight;   // x -- bottom height. y -- top height.
+            uniform float _WeatherMapScale;
+
+            uniform float _g_c;      // global cloud coverage
+            uniform float _g_d;      // global cloud density
+            sampler2D _WeatherMap;
+
+            // Function parameters
 
             struct appdata
             {
@@ -61,47 +69,70 @@
 
             float distanceField(float3 position)
             {
-                float sphere1 = signedDistanceSphere(position - float3(0,0,0), 1);
+                float sphere1 = signedDistanceSphere(position - float3(0,0,0), 1000);
 
                 return sphere1;
             }
 
-            fixed4 raymarching (float3 rayOrigin, float3 rayDirection, float maxDepth)
+            fixed4 raymarching (float3 rayOrigin, float3 rayDirection, float maxDepth, float distFromStart)
             {
-                fixed4 result = fixed4(1,1,1,1);
-                const int maxIteration = 64;
                 float distanceTraveled = 0.0f;
+                static const int RAYMARCHING_STEPS = 64;
+                const float STEP_INCREASE_RATE = 0.01;
+                float STEP_SIZE_OUT_OF_CLOUD = 3 + distFromStart * STEP_INCREASE_RATE;
+                float STEP_SIZE_IN_CLOUD = 0.1 + distFromStart * STEP_INCREASE_RATE;
 
-                
+                float accumulatedCloud = 0;
+                bool inCloud = true;//false;
+                int exitedCloud = RAYMARCHING_STEPS;
 
-                for(int i = 0; i < maxIteration; i++)
+                for(int i = 0; i < RAYMARCHING_STEPS; i++)
                 {
                     if(distanceTraveled > _maxDistance || distanceTraveled >= maxDepth)
                     {
-                        result = fixed4(rayDirection, 0);   // w = 0 => ray miss
-                        break;
+                        break; return fixed4(rayDirection, 0);   // w = 0 => ray miss
                     }
 
                     float3 pos = rayOrigin + rayDirection * distanceTraveled;
 
                     if(i != 0 && (pos.y < _CloudLayerHeight.x || pos.y > _CloudLayerHeight.y))
                     {
-                        result = fixed4(rayDirection, 0);   // w = 0 => ray miss
-                        break;
+                        break; return fixed4(rayDirection, 0);   // w = 0 => ray miss
                     }
-
-                    float distanceToHit = distanceField(pos);
-
-                    if(distanceToHit < 0.01)
+                    
+                    float4 wm = tex2D(_WeatherMap, pos.xz / _WeatherMapScale);
+                    float WMc = max(wm.x, saturate(_g_c - 0.5) * wm.y * 2);
+/*
+                    if(inCloud && WMc <= .01 && i - exitedCloud >= 30)
                     {
-                        result = fixed4(1,1,1,1);   // w = 1 => ray hit
-                        break;
+                        inCloud = false;
+                        exitedCloud = RAYMARCHING_STEPS;
                     }
+                    else if(!inCloud && WMc > .01)
+                    {
+                        inCloud = true;
+                        distanceTraveled -= STEP_SIZE_OUT_OF_CLOUD;
+                        distanceTraveled = max(distanceTraveled, 0);
+                        continue;
+                    }
+                    else if(inCloud && WMc <= .01)
+                    {
+                        exitedCloud = i;
+                    }*/
 
-                    distanceTraveled += distanceToHit;
+                    accumulatedCloud += WMc;
+
+                    if (accumulatedCloud >= 1)
+                        break;
+
+                    if(inCloud)
+                        distanceTraveled += STEP_SIZE_IN_CLOUD;
+                    else
+                        distanceTraveled += STEP_SIZE_OUT_OF_CLOUD;
                 }
-
-                return result;
+                accumulatedCloud = clamp(accumulatedCloud, 0, 1);
+                
+                return fixed4(accumulatedCloud,accumulatedCloud,accumulatedCloud, 1);
             }
 
             fixed4 frag (v2f i) : SV_Target
@@ -125,29 +156,34 @@
                 float cloudTopT     = (_CloudLayerHeight.y - rayOrigin.y) / rayDirection.y;
 
                 // If looking away from clouds
-                if(cloudBottomT < 0 && cloudTopT < 0)
+                if(cloudBottomT < 0 && cloudTopT < 0 )
                 {
+                    // return fixed4(1,0,0,1);
                     return fixed4(sceneColor, 1.0);     // Skip raymarching
                 }
                 
+                float chosenT = 0;
                 if(rayOrigin.y < _CloudLayerHeight.x)
                 {
-                    //return fixed4(1,0,0,1);
-                    rayOrigin += rayDirection * cloudBottomT;
-                    sceneDepth -= length(rayDirection * cloudBottomT);
+                    //return fixed4(1,1,0,1);
+                    chosenT = cloudBottomT;
                 }
                 else if(rayOrigin.y > _CloudLayerHeight.y)
                 {
                     //return fixed4(0,0,1,1);
-                    rayOrigin += rayDirection * cloudTopT;
-                    sceneDepth -= length(rayDirection * cloudTopT);
+                    chosenT = cloudTopT;
                 }
-                
+                rayOrigin += rayDirection * chosenT;
+                sceneDepth -= length(rayDirection * chosenT);
 
+                fixed4 result = raymarching(rayOrigin, rayDirection, sceneDepth, chosenT);
 
-                fixed4 result = raymarching(rayOrigin, rayDirection, sceneDepth);
+                if(result.w == 0)
+                    return fixed4(sceneColor, 1);
 
-                return fixed4(sceneColor * (1.0 - result.w) + result.w * result.xyz, 1.0);
+                return fixed4(1-(1-sceneColor) * (1-result.xyz), 1.0);
+
+                //return fixed4(sceneColor * (1 - result.w) + result.w * result.xyz, 1.0);
             }
             ENDCG
         }

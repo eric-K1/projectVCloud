@@ -39,9 +39,21 @@ public class RaymarchCamera : SceneViewFilter
 
     private Camera _cam;
 
-    public float maximumRenderDistance;
+    public float cloudRenderDistance;
     public float cloudLayerBottomHeight;
     public float cloudLayerTopHeight;
+
+    [Range(0,1)]
+    public float globalCloudCoverage;
+    
+    [Range(0, 1000)]        // Can go to infinity
+    public float globalCloudDensity;
+    
+    [Range(0.1f, 2500)]        // Can go to infinity
+    public float weatherMapScale = 1.0f;
+
+    public Texture2D WeatherMap;
+    public Texture2D BlueNoise;
 
     private void OnRenderImage(RenderTexture src, RenderTexture dest)
     {
@@ -53,8 +65,15 @@ public class RaymarchCamera : SceneViewFilter
 
         RaymarchMaterial.SetMatrix("_CamFrustum", CalculateCameraFrustum(Cam));
         RaymarchMaterial.SetMatrix("_CamToWorldMatrix", Cam.cameraToWorldMatrix);
-        RaymarchMaterial.SetFloat("_maxDistance", maximumRenderDistance);
+        RaymarchMaterial.SetFloat("_maxDistance", cloudRenderDistance);
+
         RaymarchMaterial.SetVector("_CloudLayerHeight", new Vector4(cloudLayerBottomHeight, cloudLayerTopHeight, 0, 0));
+        
+        RaymarchMaterial.SetFloat("_g_c", globalCloudCoverage);
+        RaymarchMaterial.SetFloat("_g_d", globalCloudDensity);
+        RaymarchMaterial.SetTexture("_WeatherMap", WeatherMap);
+        RaymarchMaterial.SetFloat("_WeatherMapScale", weatherMapScale);
+        RaymarchMaterial.SetTexture("_BlueNoise", BlueNoise);
 
         RenderTexture.active = dest;
         RaymarchMaterial.SetTexture("_MainTex", src);
