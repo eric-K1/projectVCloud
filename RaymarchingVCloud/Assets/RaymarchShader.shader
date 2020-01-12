@@ -21,7 +21,7 @@
             sampler2D _MainTex;
             uniform sampler2D _CameraDepthTexture;
             uniform float4x4 _CamFrustum, _CamToWorldMatrix;
-            uniform float _maxDistance;
+            uniform float2 _offset;
 
             uniform float2 _CloudLayerHeight;   // x -- bottom height. y -- top height.
             uniform float _WeatherMapScale;
@@ -29,6 +29,8 @@
             uniform float _g_c;      // global cloud coverage
             uniform float _g_d;      // global cloud density
             sampler2D _WeatherMap;
+            sampler2D _BlueNoise;
+            sampler3D _ShapeNoise;
 
             // Function parameters
 
@@ -62,51 +64,65 @@
                 return o;
             }
 
-            float signedDistanceSphere(float3 pos, float r)
+            inline float remap(float val, float lowOld, float highOld, float lowNew, float highNew)
             {
-                return length(pos) - r;
+                return lowNew + (val - lowOld) * (highNew - lowNew) / (highOld - lowOld);
             }
 
-            float distanceField(float3 position)
+            float calculateCloudProbability(float3 pos, float4 wm, float WMc)
             {
-                float sphere1 = signedDistanceSphere(position - float3(0,0,0), 1000);
+                float ph = saturate(remap(pos.y, _CloudLayerHeight.x, _CloudLayerHeight.y, 0, 1));
+                // wh - wm.z; wd - wm.w
+                float SRb = saturate(remap(ph, 0, 0.07, 0, 1));
+                float SRt = saturate(remap(ph, wm.z * 0.2, wm.z, 1, 0));
+                float SA = SRb * SRt;
 
-                return sphere1;
+                float DRb = ph * saturate(remap(ph, 0, 0.15, 0, 1));
+                float DRt = saturate(remap(ph, 0.9, 1, 1, 0));
+                float DA = _g_d * DRb * DRt * wm.w * 2;
+
+                float4 sn = tex3D(_ShapeNoise, pos);
+
+                float SNsample = remap(sn.r, (sn.g * 0.625 + sn.b * 0.25 + sn.a * 0.125) - 1, 1, 0, 1);
+
+                return saturate(remap(SNsample * SA, 1 - _g_c * WMc, 1, 0, 1)) * DA;
+                // return WMc;
             }
 
             fixed4 raymarching (float3 rayOrigin, float3 rayDirection, float maxDepth, float distFromStart)
             {
-                float distanceTraveled = 0.0f;
-                static const int RAYMARCHING_STEPS = 64;
+                float distanceTraveled = 0;
+                static const int RAYMARCHING_STEPS = 128;
                 const float STEP_INCREASE_RATE = 0.01;
-                float STEP_SIZE_OUT_OF_CLOUD = 3 + distFromStart * STEP_INCREASE_RATE;
-                float STEP_SIZE_IN_CLOUD = 0.1 + distFromStart * STEP_INCREASE_RATE;
+                const float STEP_SIZE_OUT_OF_CLOUD = 3 + distFromStart * STEP_INCREASE_RATE;
+                const float STEP_SIZE_IN_CLOUD = 0.1 + distFromStart * STEP_INCREASE_RATE;
 
                 float accumulatedCloud = 0;
-                bool inCloud = true;//false;
-                int exitedCloud = RAYMARCHING_STEPS;
+                bool inCloud = false;
+                int exitedCloud = 1e20;
 
+                [unroll(RAYMARCHING_STEPS)]
                 for(int i = 0; i < RAYMARCHING_STEPS; i++)
                 {
-                    if(distanceTraveled > _maxDistance || distanceTraveled >= maxDepth)
+                    if(distanceTraveled >= maxDepth)
                     {
                         break; return fixed4(rayDirection, 0);   // w = 0 => ray miss
                     }
 
                     float3 pos = rayOrigin + rayDirection * distanceTraveled;
 
-                    if(i != 0 && (pos.y < _CloudLayerHeight.x || pos.y > _CloudLayerHeight.y))
+                    if(distanceTraveled > 1 && (pos.y < _CloudLayerHeight.x || pos.y > _CloudLayerHeight.y))
                     {
                         break; return fixed4(rayDirection, 0);   // w = 0 => ray miss
                     }
                     
-                    float4 wm = tex2D(_WeatherMap, pos.xz / _WeatherMapScale);
+                    float4 wm = tex2D(_WeatherMap, (pos.xz + _offset) / _WeatherMapScale);
                     float WMc = max(wm.x, saturate(_g_c - 0.5) * wm.y * 2);
-/*
-                    if(inCloud && WMc <= .01 && i - exitedCloud >= 30)
+                    
+                    if(inCloud && WMc <= .01 && distanceTraveled - exitedCloud >= STEP_SIZE_OUT_OF_CLOUD)
                     {
                         inCloud = false;
-                        exitedCloud = RAYMARCHING_STEPS;
+                        exitedCloud = 1e20;
                     }
                     else if(!inCloud && WMc > .01)
                     {
@@ -117,14 +133,15 @@
                     }
                     else if(inCloud && WMc <= .01)
                     {
-                        exitedCloud = i;
-                    }*/
+                        exitedCloud = distanceTraveled;
+                    }
 
-                    accumulatedCloud += WMc;
+                    accumulatedCloud += calculateCloudProbability(pos, wm, WMc);
 
                     if (accumulatedCloud >= 1)
                         break;
 
+                    // distanceTraveled += inCloud * STEP_SIZE_IN_CLOUD + (1 - inCloud) * STEP_SIZE_OUT_OF_CLOUD;
                     if(inCloud)
                         distanceTraveled += STEP_SIZE_IN_CLOUD;
                     else
@@ -173,10 +190,12 @@
                     //return fixed4(0,0,1,1);
                     chosenT = cloudTopT;
                 }
-                rayOrigin += rayDirection * chosenT;
-                sceneDepth -= length(rayDirection * chosenT);
+                float blueNoiseChange = tex2D(_BlueNoise, i.uv).x;
+                rayOrigin += rayDirection * (chosenT - blueNoiseChange);
 
-                fixed4 result = raymarching(rayOrigin, rayDirection, sceneDepth, chosenT);
+                sceneDepth -= length(rayDirection * (chosenT - blueNoiseChange));
+
+                fixed4 result = raymarching(rayOrigin, rayDirection, sceneDepth, chosenT - blueNoiseChange);
 
                 if(result.w == 0)
                     return fixed4(sceneColor, 1);
