@@ -24,13 +24,20 @@
             uniform float2 _offset;
 
             uniform float2 _CloudLayerHeight;   // x -- bottom height. y -- top height.
-            uniform float _WeatherMapScale;
 
             uniform float _g_c;      // global cloud coverage
             uniform float _g_d;      // global cloud density
+
             sampler2D _WeatherMap;
+            uniform float _WeatherMapScale;
+
             sampler2D _BlueNoise;
+
             sampler3D _ShapeNoise;
+            uniform float _ShapeNoiseScale;
+
+            sampler3D _DetailNoise;
+            uniform float _DetailNoiseScale;
 
             // Function parameters
 
@@ -45,6 +52,7 @@
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
                 float3 ray : TEXCOORD1;
+
             };
 
             v2f vert (appdata v)
@@ -81,21 +89,29 @@
                 float DRt = saturate(remap(ph, 0.9, 1, 1, 0));
                 float DA = _g_d * DRb * DRt * wm.w * 2;
 
-                float4 sn = tex3D(_ShapeNoise, pos);
-
+                float4 sn = tex3D(_ShapeNoise, pos / _ShapeNoiseScale);
                 float SNsample = remap(sn.r, (sn.g * 0.625 + sn.b * 0.25 + sn.a * 0.125) - 1, 1, 0, 1);
+                // float SN = saturate(remap(SNsample * SA, 1 - _g_c * WMc, 1, 0, 1)) * DA;
 
-                return saturate(remap(SNsample * SA, 1 - _g_c * WMc, 1, 0, 1)) * DA;
+                float4 dn = tex3D(_DetailNoise, pos / _DetailNoiseScale);
+                float DNfbm = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
+                float DNmod = 0.35 * exp(-_g_c * 0.75) * lerp(DNfbm, 1 - DNfbm, saturate(ph * 5));
+
+                float SNd = saturate(remap(SNsample * SA, 1 - _g_c * WMc, 1, 0, 1));
+
+                float d = saturate(remap(SNd, DNmod, 1, 0, 1)) * DA;
+                
+                return d;
                 // return WMc;
             }
 
             fixed4 raymarching (float3 rayOrigin, float3 rayDirection, float maxDepth, float distFromStart)
             {
                 float distanceTraveled = 0;
-                static const int RAYMARCHING_STEPS = 128;
+                static const int RAYMARCHING_STEPS = 64;
                 const float STEP_INCREASE_RATE = 0.01;
-                const float STEP_SIZE_OUT_OF_CLOUD = 3 + distFromStart * STEP_INCREASE_RATE;
-                const float STEP_SIZE_IN_CLOUD = 0.1 + distFromStart * STEP_INCREASE_RATE;
+                const float STEP_SIZE_OUT_OF_CLOUD = 5 + distFromStart * STEP_INCREASE_RATE;
+                const float STEP_SIZE_IN_CLOUD = 0.3 + distFromStart * STEP_INCREASE_RATE;
 
                 float accumulatedCloud = 0;
                 bool inCloud = false;
@@ -136,7 +152,9 @@
                         exitedCloud = distanceTraveled;
                     }
 
-                    accumulatedCloud += calculateCloudProbability(pos, wm, WMc);
+                    float curCloud = calculateCloudProbability(pos, wm, WMc);
+
+                    accumulatedCloud += curCloud;
 
                     if (accumulatedCloud >= 1)
                         break;
@@ -149,7 +167,7 @@
                 }
                 accumulatedCloud = clamp(accumulatedCloud, 0, 1);
                 
-                return fixed4(accumulatedCloud,accumulatedCloud,accumulatedCloud, 1);
+                return fixed4(1,1,1, accumulatedCloud);
             }
 
             fixed4 frag (v2f i) : SV_Target
@@ -190,8 +208,14 @@
                     //return fixed4(0,0,1,1);
                     chosenT = cloudTopT;
                 }
-                float blueNoiseChange = tex2D(_BlueNoise, i.uv).x;
+                float blueNoiseChange = 0;//tex2D(_BlueNoise, i.uv).x;
                 rayOrigin += rayDirection * (chosenT - blueNoiseChange);
+
+                
+
+                //float4 sn = tex3D(_ShapeNoise, rayOrigin / _ShapeNoiseScale);
+
+                //return sn; //fixed4(sn.g,sn.g,sn.g,1);
 
                 sceneDepth -= length(rayDirection * (chosenT - blueNoiseChange));
 
@@ -200,9 +224,9 @@
                 if(result.w == 0)
                     return fixed4(sceneColor, 1);
 
-                return fixed4(1-(1-sceneColor) * (1-result.xyz), 1.0);
+                //return fixed4(1-(1-sceneColor) * (1-result.xyz), 1.0);
 
-                //return fixed4(sceneColor * (1 - result.w) + result.w * result.xyz, 1.0);
+                return fixed4(sceneColor * (1 - result.w) + result.w * result.xyz, 1.0);
             }
             ENDCG
         }

@@ -54,6 +54,8 @@ public class RaymarchCamera : SceneViewFilter
     public float offsetX = 1.0f;
     public float offsetY = 1.0f;
 
+    public float shapeNoiseScale = 1.0f;
+
     public Texture2D WeatherMap;
     public Texture2D BlueNoise;
 
@@ -69,6 +71,20 @@ public class RaymarchCamera : SceneViewFilter
     }
 
     private Texture3D _shapeNoise;
+
+    public Texture3D DetailNoise
+    {
+        get
+        {
+            if(!_detailNoise)
+                _detailNoise = GenerateDetailNoise();
+            
+            return _detailNoise;
+        }
+    }
+
+    private Texture3D _detailNoise;
+    public float detailNoiseScale = 1.0f;
 
     private void OnRenderImage(RenderTexture src, RenderTexture dest)
     {
@@ -88,9 +104,14 @@ public class RaymarchCamera : SceneViewFilter
         RaymarchMaterial.SetFloat("_g_d", globalCloudDensity);
         RaymarchMaterial.SetTexture("_WeatherMap", WeatherMap);
         RaymarchMaterial.SetFloat("_WeatherMapScale", weatherMapScale);
+
         RaymarchMaterial.SetTexture("_BlueNoise", BlueNoise);
 
         RaymarchMaterial.SetTexture("_ShapeNoise", ShapeNoise);
+        RaymarchMaterial.SetFloat("_ShapeNoiseScale", shapeNoiseScale);
+
+        RaymarchMaterial.SetTexture("_DetailNoise", DetailNoise);
+        RaymarchMaterial.SetFloat("_DetailNoiseScale", detailNoiseScale);
 
         RenderTexture.active = dest;
         RaymarchMaterial.SetTexture("_MainTex", src);
@@ -154,27 +175,145 @@ public class RaymarchCamera : SceneViewFilter
         return frustum;
     }
 
+    public static CloudNoiseGen.NoiseSettings perlinNoiseSettings;
+    public static CloudNoiseGen.NoiseSettings worleyNoiseSettings;
+
     private static Texture3D GenerateShapeNoise()
     {
-        const int SN_SIZE = 256;
+        const int SN_SIZE = 128;
         Color[] colorArray = new Color[SN_SIZE * SN_SIZE * SN_SIZE];
         Texture3D texture = new Texture3D (SN_SIZE, SN_SIZE, SN_SIZE, TextureFormat.RGBA32, true);
-        
-        PerlinNoise perlin = new PerlinNoise(1, 10);
-        WorleyNoise mediumWorley = new WorleyNoise(1, 20, 1.0f);
-        WorleyNoise highWorley = new WorleyNoise(1, 40, 1.0f);
-        WorleyNoise highestWorley = new WorleyNoise(1, 60, 1.0f);
+        Texture3D texture1 = new Texture3D (SN_SIZE, SN_SIZE, SN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture2 = new Texture3D (SN_SIZE, SN_SIZE, SN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture3 = new Texture3D (SN_SIZE, SN_SIZE, SN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture4 = new Texture3D (SN_SIZE, SN_SIZE, SN_SIZE, TextureFormat.RGBA32, true);
 
+        perlinNoiseSettings.octaves = 8;
+        perlinNoiseSettings.brightness = 1.1f;
+        perlinNoiseSettings.periods = 5;
+        perlinNoiseSettings.contrast = 1.5f;
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 0.5f;
+        worleyNoiseSettings.periods = 2;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture1, "NoiseMapR", 128, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.Mix);
+
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 5;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture2, "NoiseMapG", 128, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 10;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture3, "NoiseMapB", 128, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 16;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture4, "NoiseMapA", 128, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+        
         for (int x = 0; x < SN_SIZE; x++) {
             for (int y = 0; y < SN_SIZE; y++) {
                 for (int z = 0; z < SN_SIZE; z++) {
                     Color c = new Color();
-                    c.r = perlin.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
-                    c.g = mediumWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
-                    c.b = highWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
-                    c.a = highestWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
+                    c.r = texture1.GetPixel(x, y, z).r;
+                    c.g = texture2.GetPixel(x, y, z).r;
+                    c.b = texture3.GetPixel(x, y, z).r;
+                    c.a = texture4.GetPixel(x, y, z).r;
 
                     colorArray[x + (y * SN_SIZE) + (z * SN_SIZE * SN_SIZE)] = c;
+                }
+            }
+        }
+
+        texture.SetPixels(colorArray);
+        texture.Apply();
+
+        // PerlinNoise perlin = new PerlinNoise(1, 20);
+        // WorleyNoise mediumWorley = new WorleyNoise(1, 20, 1.0f);
+        // WorleyNoise highWorley = new WorleyNoise(1, 40, 1.0f);
+        // WorleyNoise highestWorley = new WorleyNoise(1, 60, 1.0f);
+
+        // for (int x = 0; x < SN_SIZE; x++) {
+        //     for (int y = 0; y < SN_SIZE; y++) {
+        //         for (int z = 0; z < SN_SIZE; z++) {
+        //             Color c = new Color();
+        //             c.r = Perlin.Noise(x, y, z);//perlin.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
+        //             c.g = mediumWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
+        //             c.b = highWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
+        //             c.a = highestWorley.Sample3D((float) x/SN_SIZE, (float) y/SN_SIZE, (float) z/SN_SIZE);
+
+        //             colorArray[x + (y * SN_SIZE) + (z * SN_SIZE * SN_SIZE)] = c;
+        //         }
+        //     }
+        // }
+
+        // texture.SetPixels(colorArray);
+        // texture.Apply();
+        return texture;
+    }
+
+    
+    private static Texture3D GenerateDetailNoise()
+    {
+        const int DN_SIZE = 128;
+        Color[] colorArray = new Color[DN_SIZE * DN_SIZE * DN_SIZE];
+        Texture3D texture = new Texture3D (DN_SIZE, DN_SIZE, DN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture1 = new Texture3D (DN_SIZE, DN_SIZE, DN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture2 = new Texture3D (DN_SIZE, DN_SIZE, DN_SIZE, TextureFormat.RGBA32, true);
+        Texture3D texture3 = new Texture3D (DN_SIZE, DN_SIZE, DN_SIZE, TextureFormat.RGBA32, true);
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 5;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture1, "DetailNoiseR", 32, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 12;
+        worleyNoiseSettings.contrast = 1.5f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture2, "DetailNoiseG", 32, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+
+
+        worleyNoiseSettings.octaves = 8;
+        worleyNoiseSettings.brightness = 1.2f;
+        worleyNoiseSettings.periods = 16;
+        worleyNoiseSettings.contrast = 1.7f;
+        CloudNoiseGen.perlin = perlinNoiseSettings;
+        CloudNoiseGen.worley = worleyNoiseSettings;
+        CloudNoiseGen.InitializeNoise(ref texture3, "DetailNoiseB", 32, CloudNoiseGen.Mode.LoadAvailableElseGenerate, CloudNoiseGen.NoiseMode.WorleyOnly);
+        
+        for (int x = 0; x < DN_SIZE; x++) {
+            for (int y = 0; y < DN_SIZE; y++) {
+                for (int z = 0; z < DN_SIZE; z++) {
+                    Color c = new Color();
+                    c.r = texture1.GetPixel(x, y, z).r;
+                    c.g = texture2.GetPixel(x, y, z).r;
+                    c.b = texture3.GetPixel(x, y, z).r;
+
+                    colorArray[x + (y * DN_SIZE) + (z * DN_SIZE * DN_SIZE)] = c;
                 }
             }
         }
