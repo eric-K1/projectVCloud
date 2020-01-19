@@ -86,6 +86,17 @@ public class RaymarchCamera : SceneViewFilter
     private Texture3D _detailNoise;
     public float detailNoiseScale = 1.0f;
 
+    // Lighting parameters
+    public float lightingCloudInScatter = 0.2f;
+    public float lightingCloudOutScatter = 0.1f;
+    public float lightingBeer = 6;
+    public float lightingInVsOutScatter = 0.5f;
+    public float lightingSilverLiningIntensity = 2.5f;
+    public float lightingSilverLiningExponent = 2f;
+    public float lightingAmbientOutScatter = 0.9f;
+    public float lightingAttuentionClampVal = 0.2f;
+    public float lightingMinimumAttenuationAmbient = 0.2f;
+
     private void OnRenderImage(RenderTexture src, RenderTexture dest)
     {
         if(!RaymarchMaterial)
@@ -112,6 +123,17 @@ public class RaymarchCamera : SceneViewFilter
 
         RaymarchMaterial.SetTexture("_DetailNoise", DetailNoise);
         RaymarchMaterial.SetFloat("_DetailNoiseScale", detailNoiseScale);
+
+        // Lighting parameters
+        RaymarchMaterial.SetFloat("_cloud_inscatter", lightingCloudInScatter);
+        RaymarchMaterial.SetFloat("_cloud_outscatter", lightingCloudOutScatter);
+        RaymarchMaterial.SetFloat("_cloud_beer", lightingBeer);
+        RaymarchMaterial.SetFloat("_cloud_in_vs_outscatter", lightingInVsOutScatter);
+        RaymarchMaterial.SetFloat("_cloud_silver_intensity", lightingSilverLiningIntensity);
+        RaymarchMaterial.SetFloat("_cloud_silver_exponent", lightingSilverLiningExponent);
+        RaymarchMaterial.SetFloat("_cloud_outscatter_ambient", lightingAmbientOutScatter);
+        RaymarchMaterial.SetFloat("_cloud_attuention_clampval", lightingAttuentionClampVal);
+        RaymarchMaterial.SetFloat("_cloud_ambient_minimum", lightingMinimumAttenuationAmbient);
 
         RenderTexture.active = dest;
         RaymarchMaterial.SetTexture("_MainTex", src);

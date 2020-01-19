@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 705507995}
   - component: {fileID: 705507994}
   m_Layer: 0
-  m_Name: Directional Light
+  m_Name: Sun
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -193,7 +193,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_BoundingSphereOverride: {x: 4.5904e-41, y: 0, z: 0, w: -2.5367194e+34}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -311,14 +311,23 @@ MonoBehaviour:
   cloudLayerBottomHeight: 400
   cloudLayerTopHeight: 1000
   globalCloudCoverage: 0.6
-  globalCloudDensity: 1
-  weatherMapScale: 10000
+  globalCloudDensity: 2.3
+  weatherMapScale: 9297
   offsetX: 0
   offsetY: -3000
   shapeNoiseScale: 1000
   WeatherMap: {fileID: 2800000, guid: 5b92b83f1ec8de141b0b200c2a069a61, type: 3}
   BlueNoise: {fileID: 2800000, guid: da94feda2db44ef46a07f10065275dec, type: 3}
   detailNoiseScale: 705.9
+  lightingCloudInScatter: 0.2
+  lightingCloudOutScatter: 0.1
+  lightingBeer: 6
+  lightingInVsOutScatter: 0.5
+  lightingSilverLiningIntensity: 2.5
+  lightingSilverLiningExponent: 2
+  lightingAmbientOutScatter: 0.9
+  lightingAttuentionClampVal: 0.2
+  lightingMinimumAttenuationAmbient: 0.2
 --- !u!1 &1094642765
 GameObject:
   m_ObjectHideFlags: 0
