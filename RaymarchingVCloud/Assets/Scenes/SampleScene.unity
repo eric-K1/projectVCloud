@@ -310,14 +310,14 @@ MonoBehaviour:
   cloudLayer:
     topHeight: 1000
     bottomHeight: 400
-  globalCloudCoverage: 0.6
-  globalCloudDensity: 1.7
+  globalCloudCoverage: 0.779
+  globalCloudDensity: 1.25
   weatherMapST:
     offset: {x: 0, y: 0}
     scale: 10000
-  shapeNoiseScale: 3000
+  shapeNoiseScale: 1000
   WeatherMap: {fileID: 2800000, guid: 5b92b83f1ec8de141b0b200c2a069a61, type: 3}
-  detailNoiseScale: 300
+  detailNoiseScale: 1000
   lightingParameters:
     cloudInScatter: 0.2
     cloudOutScatter: 0.1
@@ -329,8 +329,8 @@ MonoBehaviour:
     attuentionClampVal: 0.2
     minimumAttenuationAmbient: 0.2
   stepIncreaseRate: 0.01
-  stepSizeInsideCloud: 1.5
-  stepSizeOutsideCloud: 20
+  stepSizeInsideCloud: 10
+  stepSizeOutsideCloud: 30
   gizmosEnabled: 1
 --- !u!1 &1094642765
 GameObject:
