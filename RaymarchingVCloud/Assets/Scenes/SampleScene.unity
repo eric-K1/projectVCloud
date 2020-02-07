@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44715965, g: 0.49707693, b: 0.5751466, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -148,7 +148,7 @@ Light:
   serializedVersion: 9
   m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
-  m_Intensity: 1
+  m_Intensity: 1.5
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -193,7 +193,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 4.5904e-41, y: 0, z: 0, w: -2.5367194e+34}
+  m_BoundingSphereOverride: {x: 3.478e-42, y: 1.02e-43, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -204,13 +204,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705507993}
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: -0.11174059, y: 0.8777852, z: -0.39357188, w: -0.24921556}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 48.3, y: 211.7, z: 0}
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -289,7 +289,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   m_LocalRotation: {x: 0.044142637, y: 0.8274565, z: 0.065703556, w: -0.55592287}
-  m_LocalPosition: {x: 5, y: 36, z: 2}
+  m_LocalPosition: {x: 22, y: 34, z: 16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -304,30 +304,34 @@ MonoBehaviour:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ba551360c08819ff29e03fae12a79e71, type: 3}
+  m_Script: {fileID: 11500000, guid: ce8b7a9979d53ad4099140bea980b7f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _shader: {fileID: 4800000, guid: 6ba88fdb102c23310ac5f209f365335f, type: 3}
-  cloudLayerBottomHeight: 400
-  cloudLayerTopHeight: 1000
+  cloudLayer:
+    topHeight: 1000
+    bottomHeight: 400
   globalCloudCoverage: 0.6
-  globalCloudDensity: 2.3
-  weatherMapScale: 9297
-  offsetX: 0
-  offsetY: -3000
-  shapeNoiseScale: 1000
+  globalCloudDensity: 1.7
+  weatherMapST:
+    offset: {x: 0, y: 0}
+    scale: 10000
+  shapeNoiseScale: 3000
   WeatherMap: {fileID: 2800000, guid: 5b92b83f1ec8de141b0b200c2a069a61, type: 3}
-  BlueNoise: {fileID: 2800000, guid: da94feda2db44ef46a07f10065275dec, type: 3}
-  detailNoiseScale: 705.9
-  lightingCloudInScatter: 0.2
-  lightingCloudOutScatter: 0.1
-  lightingBeer: 6
-  lightingInVsOutScatter: 0.5
-  lightingSilverLiningIntensity: 2.5
-  lightingSilverLiningExponent: 2
-  lightingAmbientOutScatter: 0.9
-  lightingAttuentionClampVal: 0.2
-  lightingMinimumAttenuationAmbient: 0.2
+  detailNoiseScale: 300
+  lightingParameters:
+    cloudInScatter: 0.2
+    cloudOutScatter: 0.1
+    beer: 6
+    inVsOutScatter: 0.5
+    silverLiningIntensity: 2.5
+    silverLiningExponent: 2
+    ambientOutScatter: 0.9
+    attuentionClampVal: 0.2
+    minimumAttenuationAmbient: 0.2
+  stepIncreaseRate: 0.01
+  stepSizeInsideCloud: 1.5
+  stepSizeOutsideCloud: 20
+  gizmosEnabled: 1
 --- !u!1 &1094642765
 GameObject:
   m_ObjectHideFlags: 0
