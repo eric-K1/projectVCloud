@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
 
 namespace CloudRendering 
 {
@@ -39,6 +40,19 @@ namespace CloudRendering
         }
 
         private Camera _cam;
+        public RenderTexture screenshotRT
+        {
+            get
+            {
+                if(!Cam || !_rt)
+                {
+                    _rt = new RenderTexture(Screen.width, Screen.height, 16, RenderTextureFormat.ARGB32);
+                }
+                return _rt;
+            }
+        }
+
+        private RenderTexture _rt;
 
         [System.Serializable]
         public class CloudLayer 
@@ -150,7 +164,56 @@ namespace CloudRendering
         public float stepSizeOutsideCloud = 20f; 
     
 
-        public bool gizmosEnabled = false; 
+        public bool gizmosEnabled = false;
+
+        public bool groundTruthMode = false;
+    
+        [Range(0,1)]
+        public float groundTruthThreshold = 0.01f;
+
+        private int FileCounter = 0;
+        private string folderPath;
+
+        private void Start()
+        {
+            folderPath = Application.dataPath + "/Frames";
+            Directory.CreateDirectory(folderPath);
+        }
+
+        private void Update() {
+            if(Input.GetKeyUp("space"))
+            {
+                bool orig = groundTruthMode;
+                groundTruthMode = true;
+                CamCapture();
+                groundTruthMode = orig;
+            }
+        }
+
+        void CamCapture()
+        {
+            //change render target to our renderTexture
+            RenderTexture currentRT = RenderTexture.active;
+            RenderTexture.active = screenshotRT;
+            RenderTexture currentCamRT = Cam.targetTexture;
+            Cam.targetTexture = screenshotRT;
+
+            Cam.Render();
+            Debug.Log(screenshotRT);
+
+            Texture2D Image = new Texture2D(screenshotRT.width, screenshotRT.height);
+            Image.ReadPixels(new Rect(0, 0, screenshotRT.width, screenshotRT.height), 0, 0);
+            Image.Apply();
+
+            RenderTexture.active = currentRT;
+            Cam.targetTexture = currentCamRT;
+
+            var Bytes = Image.EncodeToPNG();
+            Destroy(Image);
+
+            File.WriteAllBytes(folderPath + "/Frame_" + FileCounter + ".png", Bytes);
+            FileCounter++;
+        }
 
         private void OnRenderImage(RenderTexture src, RenderTexture dest)
         {
@@ -199,6 +262,9 @@ namespace CloudRendering
             RaymarchMaterial.SetFloat("_step_increase_rate", stepIncreaseRate);
             RaymarchMaterial.SetFloat("_step_size_inside_cloud", stepSizeInsideCloud);
             RaymarchMaterial.SetFloat("_step_size_outside_cloud", stepSizeOutsideCloud);
+
+            RaymarchMaterial.SetInt("_groundTruthMode", groundTruthMode ? 1 : 0);
+            RaymarchMaterial.SetFloat("_groundTruthThreshold", groundTruthThreshold);
 
             RenderTexture.active = dest;
             RaymarchMaterial.SetTexture("_MainTex", src);

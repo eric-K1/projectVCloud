@@ -58,6 +58,9 @@
             uniform float _step_size_inside_cloud;
             uniform float _step_size_outside_cloud;
 
+            uniform int _groundTruthMode;
+            uniform float _groundTruthThreshold;
+
             // Function parameters
 
             struct appdata
@@ -294,7 +297,10 @@
                 // If ray is parallel to clouds and not in cloud layer
                 if(rayDirection.y == 0  && (rayOrigin.y > _CloudLayerHeight.y || rayOrigin.y < _CloudLayerHeight.x))
                 {
-                    return fixed4(sceneColor, 1.0);     // Skip raymarching
+                    if(_groundTruthMode == 1)
+                        return fixed4(0,0,0,1);
+                    else
+                        return fixed4(sceneColor, 1.0);     // Skip raymarching
                 }
 
                 // Points on ray are given by the equation: P = rayOrigin + t * rayDirection (t is a scalar)
@@ -305,7 +311,10 @@
                 // If looking away from clouds
                 if(cloudBottomT < 0 && cloudTopT < 0 )
                 {
-                    return fixed4(sceneColor, 1.0);     // Skip raymarching
+                    if(_groundTruthMode == 1)
+                        return fixed4(0,0,0,1);
+                    else
+                        return fixed4(sceneColor, 1.0);     // Skip raymarching
                 }
                 
                 float chosenT = 0;
@@ -324,11 +333,21 @@
 
                 fixed4 result = raymarching(rayOrigin, rayDirection, sceneColor, sceneDepth, chosenT, blueNoiseChange);
 
+                if(_groundTruthMode == 1)
+                {
+                    if(result.w > _groundTruthThreshold)
+                        return 1;
+                    else
+                        return fixed4(0,0,0,1);
+                }
+
+
                 if(result.w == 0)
                     return fixed4(sceneColor, 1);
 
                 // "Screen" blend mode
                 //return fixed4(1-(1-sceneColor) * (1-result.xyz), 1.0);
+
 
                 return fixed4(sceneColor * (1 - result.w) + result.w * result.xyz, 1.0);
             }
